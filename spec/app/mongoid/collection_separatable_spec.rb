@@ -6,11 +6,33 @@ RSpec.describe Mongoid::CollectionSeparatable do
     expect(query_plan['parsedQuery']).to eq(query)
   end
 
+  describe 'included' do
+    it 'set condition field on condition class' do
+      field = Form.fields['entries_separated']
+      expect(field).not_to be_nil
+      expect(field.options[:type]).to eq(Mongoid::Boolean)
+      expect(Entry.separated_field).to eq(:form_id)
+      expect(Entry.separated_parent_class).to eq(Form)
+      expect(Entry.separated_parent_field).to eq(:id)
+      expect(Entry.separated_condition_field).to eq(:entries_separated)
+    end
+
+    it 'use parent field from setting' do
+      class Entry
+        separated_by :form_name, parent_class: 'Form', parent_field: :name, on_condition: :entries_separated
+      end
+
+      expect(Entry.separated_parent_field).to eq(:name)
+    end
+
+
+  end
+
   describe 'fetch entries from separated collections when condition field is true' do
     let(:form) {Form.create!}
 
     before do
-      form.set collection_separated: true
+      form.set entries_separated: true
       form.entries.with(collection: "entries_#{form.id}") do
         form.entries.create name: 'test'
       end

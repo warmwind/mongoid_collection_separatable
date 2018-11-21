@@ -1,6 +1,5 @@
 module Mongoid
   module Contextual
-
     private
 
     # Changes:
@@ -10,39 +9,46 @@ module Mongoid
 
     def create_context_with_separated_entries
       context = create_context_without_separated_entries
-      form_id = self.selector['form_id'].to_s
-      if (collection.name == 'entries' || context.collection&.name == 'entries') && Form.where(id: form_id, collection_separated: true).exists?
+      query_class = instance_variable_get :@klass
+      if should_query_from_separated_collection? query_class
+        new_collection_name = separated_value query_class
         # self.selector.except!('form_id')
         # filter = context.instance_variable_get(:@view).filter.except('form_id')
         # context.instance_variable_get(:@view).instance_variable_set :@filter, filter
-        context.collection.instance_variable_set :@name, "entries_#{form_id}"
-        collection.instance_variable_set :@name, "entries_#{form_id}"
+        context.collection.instance_variable_set :@name, "entries_#{new_collection_name}"
+        collection.instance_variable_set :@name, "entries_#{new_collection_name}"
       end
-      self.instance_variable_set :@context, context
+      instance_variable_set :@context, context
       context
     end
 
-    alias_method :create_context_without_separated_entries, :create_context
-    alias_method :create_context, :create_context_with_separated_entries
+    def should_query_from_separated_collection? query_class
+      return if !query_class.respond_to?(:separated_field) || !query_class.send(:separated_field)
+      query_class.separated_parent_class.where(query_class.separated_parent_field => separated_value(query_class), query_class.separated_condition_field => true).exists?
+    end
+
+    def separated_value query_class
+      selector[query_class.separated_field.to_s].to_s
+    end
+
+    alias create_context_without_separated_entries create_context
+    alias create_context create_context_with_separated_entries
   end
 end
 
 module Mongoid
   module Relations
     module Referenced
-
       class Many < Relations::Many
-
         private
 
         # Changes:
         # 1. 'base' should be an instance of Form
         # 2. If form has entries_separated flat and collection name is entries, clone a new context because it is build each time when called and set to context. Then remove form_id from selector because all the entries inside the new collection has the same form_id
 
-
         def criteria_with_separated_entries
           cri = criteria_without_separated_entries
-          if base.is_a?(Form) && base.collection_separated && collection.name == 'entries'
+          if should_query_from_separated_collection? cri
             context = cri.context.clone
             context.collection.instance_variable_set :@name, "entries_#{base.id}"
             cri.instance_variable_set :'@collection', @collection
@@ -51,15 +57,19 @@ module Mongoid
           cri
         end
 
-        alias_method :criteria_without_separated_entries, :criteria
-        alias_method :criteria, :criteria_with_separated_entries
+        def should_query_from_separated_collection?(criteria)
+          query_class = criteria.instance_variable_get :@klass
+          query_class.respond_to?(:separated_field) && query_class.send(:separated_field) && base.is_a?(query_class.separated_parent_class) && base.send(query_class.separated_condition_field)
+        end
+
+        alias criteria_without_separated_entries criteria
+        alias criteria criteria_with_separated_entries
       end
     end
   end
 end
 
 module Mongoid
-
   # The +Criteria+ class is the core object needed in Mongoid to retrieve
   # objects from the database. It is a DSL that essentially sets up the
   # selector and options arguments that get passed on to a Mongo::Collection
@@ -67,10 +77,8 @@ module Mongoid
   # can be chained in order to create a readable criterion to be executed
   # against the database.
   class Criteria
-
     def ensured_collection
       context.collection
     end
-
   end
 end
