@@ -11,12 +11,12 @@ module Mongoid
       context = create_context_without_separated_entries
       query_class = instance_variable_get :@klass
       if should_query_from_separated_collection? query_class
-        new_collection_name = separated_value query_class
+        new_collection_name = query_class.separated_collection_prefix + separated_value(query_class)
         # self.selector.except!('form_id')
         # filter = context.instance_variable_get(:@view).filter.except('form_id')
         # context.instance_variable_get(:@view).instance_variable_set :@filter, filter
-        context.collection.instance_variable_set :@name, "entries_#{new_collection_name}"
-        collection.instance_variable_set :@name, "entries_#{new_collection_name}"
+        context.collection.instance_variable_set :@name, new_collection_name
+        collection.instance_variable_set :@name, new_collection_name
       end
       instance_variable_set :@context, context
       context
@@ -48,17 +48,17 @@ module Mongoid
 
         def criteria_with_separated_entries
           cri = criteria_without_separated_entries
-          if should_query_from_separated_collection? cri
+          query_class = cri.instance_variable_get :@klass
+          if should_query_from_separated_collection? query_class
             context = cri.context.clone
-            context.collection.instance_variable_set :@name, "entries_#{base.id}"
+            context.collection.instance_variable_set :@name, "#{query_class.separated_collection_prefix}#{base.id}"
             cri.instance_variable_set :'@collection', @collection
             # cri.selector.except!('form_id')
           end
           cri
         end
 
-        def should_query_from_separated_collection?(criteria)
-          query_class = criteria.instance_variable_get :@klass
+        def should_query_from_separated_collection?(query_class)
           query_class.respond_to?(:separated_field) && query_class.send(:separated_field) && base.is_a?(query_class.separated_parent_class) && base.send(query_class.separated_condition_field)
         end
 

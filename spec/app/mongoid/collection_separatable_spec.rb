@@ -15,17 +15,23 @@ RSpec.describe Mongoid::CollectionSeparatable do
       expect(Entry.separated_parent_class).to eq(Form)
       expect(Entry.separated_parent_field).to eq(:id)
       expect(Entry.separated_condition_field).to eq(:entries_separated)
+      expect(Entry.separated_collection_prefix).to eq('entries_')
     end
 
     it 'use parent field from setting' do
-      class Entry
-        separated_by :form_name, parent_class: 'Form', parent_field: :name, on_condition: :entries_separated
+      class MockEntry
+        include Mongoid::Document
+        include Mongoid::CollectionSeparatable
+        field :name, type: String
+
+        belongs_to :form
+
+        separated_by :form_name, parent_class: 'Form', parent_field: :name, on_condition: :entries_separated, prefix: :own_prefix
       end
 
-      expect(Entry.separated_parent_field).to eq(:name)
+      expect(MockEntry.separated_parent_field).to eq(:name)
+      expect(MockEntry.separated_collection_prefix).to eq('own_prefix')
     end
-
-
   end
 
   describe 'fetch entries from separated collections when condition field is true' do
