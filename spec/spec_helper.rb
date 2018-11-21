@@ -76,4 +76,5 @@ end
 
 
 Dir[File.join(File.dirname(__FILE__), "app/models/*.rb")].each{ |f| require f }
+Dir[File.join(File.dirname(__FILE__), "mongoid/collection_separatable/**/*.rb")].each{ |f| require f }
 

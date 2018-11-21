@@ -1,5 +1,6 @@
 require 'mongoid'
 require 'mongoid/collection_separatable/monkey_patches'
+require 'mongoid/collection_separatable/tasks/separate'
 require 'active_support'
 require 'mongoid/collection_separatable/version'
 
