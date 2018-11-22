@@ -9,7 +9,7 @@ RSpec.describe Mongoid::CollectionSeparatable::Tasks::Separate do
       Entry.create form_id: Form.new.id, name: 'test3'
     end
     it 'separate records from one collection into another' do
-      Mongoid::CollectionSeparatable::Tasks::Separate.new('Entry', 'form_id', form.id).run
+      Mongoid::CollectionSeparatable::Tasks::Separate.new(origin_class: 'Entry', condition_key: 'form_id', condition_value: form.id).run
 
       Entry.with(collection: "entries_#{form.id}") do
         expect(Entry.count).to eq(2)
