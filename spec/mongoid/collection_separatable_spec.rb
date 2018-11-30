@@ -142,6 +142,12 @@ RSpec.describe Mongoid::CollectionSeparatable do
           expect(form.entries.ensured_collection.name).to eq("entries_#{form.id}")
         end
 
+        it 'when using in query and there is only one query name' do
+          form.entries.create
+          entries = Entry.in(form_id: [form.id]).to_a
+          expect(entries.count).to eq(1)
+        end
+
       end
 
       context 'for embedded document' do

@@ -28,7 +28,17 @@ module Mongoid
     end
 
     def separated_value query_class
-      selector[query_class.separated_field.to_s].to_s
+      value = separated_selector(query_class)
+      value = separated_value_from_query_in_with_only_one_value(query_class) if value.is_a?(Hash)
+      value
+    end
+
+    def separated_value_from_query_in_with_only_one_value query_class
+      separated_selector(query_class)['$in']&.first
+    end
+
+    def separated_selector query_class
+      selector[query_class.separated_field.to_s]
     end
 
     alias_method :create_context_without_separated_entries, :create_context
