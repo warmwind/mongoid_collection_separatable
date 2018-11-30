@@ -77,68 +77,108 @@ RSpec.describe Mongoid::CollectionSeparatable do
         form.set entries_separated: true
       end
 
-      it 'when create' do
-        form.entries.create name: 'test'
-        expect(form.entries.count).to eq(1)
-        with_new_collection(form) {expect(Entry.count).to eq(1)}
-      end
-
-      it 'when build and save' do
-        entry = form.entries.build
-        entry.name = 'test'
-        entry.save
-        expect(form.entries.count).to eq(1)
-        expect(Entry.count).to eq(0)
-        with_new_collection(form) {expect(Entry.count).to eq(1)}
-        expect(entry.reload.name).to eq('test')
-      end
-
-      it 'when update' do
-        entry = form.entries.create
-        entry.set name: 'change name'
-        with_new_collection form do
-          expect(entry.reload.name).to eq('change name')
-          entry.update name: 'another name'
-          expect(entry.reload.name).to eq('another name')
-        end
-      end
-
-      it 'when destroy' do
-        entry = form.entries.create
-        with_new_collection form do
-          entry.destroy
-          expect(form.entries.count).to eq(0)
+      context 'for root document' do
+        it 'when create' do
+          form.entries.create name: 'test'
+          expect(form.entries.count).to eq(1)
+          with_new_collection(form) {expect(Entry.count).to eq(1)}
         end
 
-        entry = form.entries.create
-        with_new_collection form do
-          form.entries.where(id: entry.id).destroy
-          expect(form.entries.count).to eq(0)
+        it 'when build and save' do
+          entry = form.entries.build
+          entry.name = 'test'
+          entry.save
+          expect(form.entries.count).to eq(1)
+          expect(Entry.count).to eq(0)
+          with_new_collection(form) {expect(Entry.count).to eq(1)}
+          expect(entry.reload.name).to eq('test')
         end
+
+        it 'when update' do
+          entry = form.entries.create
+          entry.set name: 'change name'
+          with_new_collection form do
+            expect(entry.reload.name).to eq('change name')
+            entry.update name: 'another name'
+            expect(entry.reload.name).to eq('another name')
+          end
+        end
+
+        it 'when destroy' do
+          entry = form.entries.create
+          with_new_collection form do
+            entry.destroy
+            expect(form.entries.count).to eq(0)
+          end
+
+          entry = form.entries.create
+          with_new_collection form do
+            form.entries.where(id: entry.id).destroy
+            expect(form.entries.count).to eq(0)
+          end
+        end
+
+        it 'when query by class and provide object id and class' do
+          form.entries.create
+          expect(Entry.where(form_id: form.id).count).to eq(1)
+          expect(Entry.where(form: form).count).to eq(1)
+        end
+
+        it 'when explain query' do
+          query = form.entries.explain.to_h['queryPlanner']
+          check_query_plan(query, form, 'form_id' => {'$eq' => form.id})
+
+          query = form.entries.where(name: 'test').explain.to_h['queryPlanner']
+          check_query_plan(query, form, '$and' => [{'form_id' => {'$eq' => form.id}}, {'name' => {'$eq' => 'test'}}])
+
+          query = Entry.where(form: form).explain.to_h['queryPlanner']
+          check_query_plan(query, form, 'form_id' => {'$eq' => form.id})
+
+          query = Entry.where(form: form, name: 'test').explain.to_h['queryPlanner']
+          check_query_plan(query, form, '$and' => [{'form_id' => {'$eq' => form.id}}, 'name' => {'$eq' => 'test'}])
+        end
+
+        it 'when aggregate and provide form id as match condition' do
+          expect(form.entries.ensured_collection.name).to eq("entries_#{form.id}")
+        end
+
       end
 
-      it 'when query by class and provide object id and class' do
-        form.entries.create
-        expect(Entry.where(form_id: form.id).count).to eq(1)
-        expect(Entry.where(form: form).count).to eq(1)
-      end
+      context 'for embedded document' do
+        it 'when create' do
+          entry = form.entries.create name: 'test'
+          entry.create_metainfo device: 'iphone'
+          expect(entry.reload.metainfo.device).to eq('iphone')
+        end
 
-      it 'when explain query' do
-        query = form.entries.explain.to_h['queryPlanner']
-        check_query_plan(query, form, 'form_id' => {'$eq' => form.id})
+        it 'when build and save' do
+          entry = form.entries.build
+          entry.name = 'test'
+          entry.metainfo = Metainfo.new(device: 'iphone')
+          entry.save
+          expect(entry.reload.metainfo.device).to eq('iphone')
+        end
 
-        query = form.entries.where(name: 'test').explain.to_h['queryPlanner']
-        check_query_plan(query, form, '$and' => [{'form_id' => {'$eq' => form.id}}, {'name' => {'$eq' => 'test'}}])
+        it 'when update' do
+          entry = form.entries.create metainfo: {device: 'xiaomi'}
+          entry.set metainfo: {device: 'iphone'}
+          expect(entry.reload.metainfo.device).to eq('iphone')
 
-        query = Entry.where(form: form).explain.to_h['queryPlanner']
-        check_query_plan(query, form, 'form_id' => {'$eq' => form.id})
+          entry.metainfo.device = 'huawei'
+          entry.save
+          expect(entry.reload.metainfo.device).to eq('huawei')
+        end
 
-        query = Entry.where(form: form, name: 'test').explain.to_h['queryPlanner']
-        check_query_plan(query, form, '$and' => [{'form_id' => {'$eq' => form.id}}, 'name' => {'$eq' => 'test'}])
-      end
+        it 'when query by class and provide object id and class' do
+          form.entries.create metainfo: {device: 'iphone'}
+          expect(Entry.where(form_id: form.id, 'metainfo.device' => 'iphone').count).to eq(1)
+          expect(Entry.where(form: form).count).to eq(1)
+        end
 
-      it 'when aggregate and provide form id as match condition' do
-        expect(form.entries.ensured_collection.name).to eq("entries_#{form.id}")
+
+        it 'when aggregate and provide form id as match condition' do
+          expect(form.entries.ensured_collection.name).to eq("entries_#{form.id}")
+        end
       end
     end
   end

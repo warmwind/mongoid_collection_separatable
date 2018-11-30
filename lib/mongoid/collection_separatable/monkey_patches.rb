@@ -1,15 +1,3 @@
-module BSON
-  class ObjectId
-    def to_json(*_args)
-      to_s.to_json
-    end
-
-    def as_json(*_args)
-      to_s.as_json
-    end
-  end
-end
-
 module Mongoid
   module Contextual
     private
@@ -43,8 +31,8 @@ module Mongoid
       selector[query_class.separated_field.to_s].to_s
     end
 
-    alias create_context_without_separated_entries create_context
-    alias create_context create_context_with_separated_entries
+    alias_method :create_context_without_separated_entries, :create_context
+    alias_method :create_context, :create_context_with_separated_entries
   end
 end
 
@@ -74,8 +62,8 @@ module Mongoid
           query_class.respond_to?(:separated_field) && query_class.send(:separated_field) && base.is_a?(query_class.separated_parent_class) && base.send(query_class.separated_condition_field)
         end
 
-        alias criteria_without_separated_entries criteria
-        alias criteria criteria_with_separated_entries
+        alias_method :criteria_without_separated_entries, :criteria
+        alias_method :criteria, :criteria_with_separated_entries
       end
     end
   end
@@ -91,6 +79,37 @@ module Mongoid
   class Criteria
     def ensured_collection
       context.collection
+    end
+  end
+end
+
+module Mongoid
+  module Clients
+    module Options
+      def collection_with_separated(parent = nil)
+        klass = self.class
+        origin_collection = collection_without_separated(parent)
+        return origin_collection unless self.class.respond_to?(:separated_field)
+        origin_collection.instance_variable_set :@name, separated_collection_name(klass)
+        origin_collection
+      end
+
+      alias_method :collection_without_separated, :collection
+      alias_method :collection, :collection_with_separated
+
+      def collection_name_with_separated
+        klass = self.class
+        origin_collection_name = collection_name_without_separated
+        return origin_collection_name unless self.class.respond_to?(:separated_field)
+        separated_collection_name klass
+      end
+
+      alias_method :collection_name_without_separated, :collection_name
+      alias_method :collection_name, :collection_name_with_separated
+
+      def separated_collection_name(klass)
+        klass.where(klass.separated_field => self.send(klass.separated_field)).ensured_collection.name
+      end
     end
   end
 end
