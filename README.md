@@ -1,8 +1,6 @@
 # MongoidCollectionSeparatable
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/mongoid_collection_separatable`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Support mongoid collections to be saved into and queried from separated collections with condition
 
 ## Installation
 
@@ -21,14 +19,17 @@ Or install it yourself as:
     $ gem install mongoid_collection_separatable
 
 ## Usage
+Add the following line into the model class that you want to split:
+```ruby
+  separated_by :form_id, parent_class: 'Form', on_condition: :entries_separated
+```
 
-TODO: Write usage instructions here
+When `on_condition` field in `parent_class` is set to true, current records referenced to `separated_by` field will be saved into separated collections. Default collections name will be `#{current_collection}_#{form_id_value}` 
 
-## Development
-
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+Migration task to separate collections:
+```bash
+rake db:mongoid:collection:separate[origin_class,condition_key,condition_value]
+```
 
 ## Contributing
 
