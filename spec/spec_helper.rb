@@ -1,6 +1,7 @@
 require "bundler/setup"
 require "mongoid_collection_separatable"
 require "pry-byebug"
+require "active_support/testing/time_helpers"
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
@@ -57,6 +58,7 @@ module MyApp
 end
 
 RSpec.configure do |config|
+   config.include ActiveSupport::Testing::TimeHelpers
 
   # Drop all collections
   config.before(:each) do

@@ -118,6 +118,17 @@ RSpec.describe Mongoid::CollectionSeparatable do
           end
         end
 
+        it 'when touch' do
+          entry = form.entries.create
+          updated_at = entry.updated_at
+          print updated_at
+          travel 1.minute do
+            entry.touch
+          end
+          print entry.updated_at
+          expect(entry.updated_at).to_not eq(updated_at)
+        end
+
         it 'when query by class and provide object id and class' do
           form.entries.create
           expect(Entry.where(form_id: form.id).count).to eq(1)

@@ -2,6 +2,7 @@ require_relative 'form'
 
 class Entry
   include Mongoid::Document
+  include Mongoid::Timestamps
   include Mongoid::CollectionSeparatable
   include Mongoid::Attributes::Dynamic
 
