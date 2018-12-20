@@ -6,6 +6,8 @@ class Entry
   include Mongoid::CollectionSeparatable
   include Mongoid::Attributes::Dynamic
 
+  index({ form_id: 1 }, { background: true })
+
   field :name, type: String
 
   belongs_to :form

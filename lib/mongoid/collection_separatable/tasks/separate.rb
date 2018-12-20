@@ -13,6 +13,7 @@ module Mongoid
         def run
           target_collection = "#{origin_class.collection_name}_#{condition_value}"
 
+          origin_class.with(collection: target_collection) {Entry.create_indexes}
           origin_class.collection.aggregate([
                                               {'$match': {condition_key => condition_value}},
                                               {'$out': target_collection}
