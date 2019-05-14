@@ -24,7 +24,12 @@ module Mongoid
 
     def should_query_from_separated_collection? query_class
       return if !query_class.respond_to?(:separated_field) || !query_class.send(:separated_field)
-      query_class.separated_parent_class.where(query_class.separated_parent_field => separated_value(query_class), query_class.separated_condition_field => true).exists?
+      separated_key = separated_value(query_class)
+      cache_key = "separated_for_#{separated_key}"
+      return instance_variable_get "@#{cache_key}" if instance_variable_defined? "@#{cache_key}"
+      is_separated = query_class.separated_parent_class.where(query_class.separated_parent_field => separated_key, query_class.separated_condition_field => true).exists?
+      instance_variable_set "@#{cache_key}", is_separated
+      is_separated
     end
 
     def separated_value query_class
